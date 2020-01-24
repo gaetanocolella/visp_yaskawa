@@ -99,6 +99,8 @@ int main(int argc, char*argv[]){
    
     joint_states_pub.publish(joints_states_msg);
 	
+    
+    ros::spinOnce();
 	loop_rate.sleep();
 	
 }

@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "Robots/MotomanSIA5F.h"
-#include "sensor_msgs/JointState.h"
+#include <std_msgs/Float64MultiArray.h>
+#include <sensor_msgs/JointState.h>
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/TwistStamped.h"
 
@@ -10,8 +11,8 @@ bool ok;
 using namespace TooN;
 using namespace std;
 
+double tf=5.0;
 Vector<7> pos_i_Robot;
-
 Vector<3> pos;
 Vector<3> vel;
 UnitQuaternion quat;
@@ -19,30 +20,26 @@ Vector<3> w;
 
 Matrix<4,4> T_init;
 
-Matrix<4,4> n_T_c=Data( -1, 0, -0.045, 0,
-        		       0.0012, -0.9659, -0.2588, 0.0633,
-        			   -0.0044, -0.2588, 0.9659, 0.0969,
-            				0,       0,      0,      1);
-            									
-MotomanSIA5F yaskawa=MotomanSIA5F(n_T_c,2.0,"yaskawa");
+Matrix<4,4> n_T_e= Data(-1.0, 0.0, 0.0, 0.0,
+                             0.0,-1.0, 0.0, 0.0,
+                             0.0, 0.0, 1.0, 0.2369,
+                             0.0, 0.0, 0.0, 1); 
+                           
+                               
+MotomanSIA5F yaskawa(n_T_e,2.0,"yaskawa");
 
 
-void sub_joint_state_cb(const sensor_msgs::JointState::ConstPtr& msg){
-	
-	if(!joint_ok_init){			
-		joint_ok_init=true;
-		pos_i_Robot[0]=msg->position[0];
-		pos_i_Robot[1]=msg->position[1];
-		pos_i_Robot[2]=msg->position[2];
-		pos_i_Robot[3]=msg->position[3];
-		pos_i_Robot[4]=msg->position[4];
-		pos_i_Robot[5]=msg->position[5];
-		pos_i_Robot[6]=msg->position[6];
-				
-	}
-
+void sub_joint_state_cb(const sensor_msgs::JointState jointStateMsg)
+{
+    if(!joint_ok_init){
+    joint_ok_init=true;
+    if (jointStateMsg.position.size() == yaskawa.getNumJoints()){
+		for(int i = 0; i < yaskawa.getNumJoints(); i++) {
+				pos_i_Robot[i] = jointStateMsg.position[i];
+		}
+   }      
 }
-
+}
 void sub_desired_pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg){
 
 		pos[0]=msg->pose.position.x;
@@ -80,44 +77,30 @@ int main(int argc, char*argv[]){
     
     joint_ok_init=false;
    
-	yaskawa.setDLSJointSpeedSaturation(5.0);
-	ros::Publisher pub_joints = nh.advertise<sensor_msgs::JointState>("/joint_command2", 1);
+	
+	/*--------------------SUBSCRIBER & PUBLISHER---------------------------*/    
 	ros::Subscriber sub = nh.subscribe("/joint_states", 1, sub_joint_state_cb);
 	ros::Subscriber sub_pose=nh.subscribe("/desired_pose",1,sub_desired_pose_cb);
 	ros::Subscriber sub_twist=nh.subscribe("/desired_twist",1,sub_desired_twist_cb);
+	ros::Publisher joint_states_pub = nh.advertise<std_msgs::Float64MultiArray>("joint_ll_control", 1);
+	/*---------------------------------------------------------------------*/
 	
 	while(ros::ok() && !joint_ok_init){
 		ros::spinOnce();
 	}
 
-	cout << "Qi=" <<pos_i_Robot<<endl;
+	cout << "qi=" <<pos_i_Robot<<endl;
 	
 	Vector<> pos_i_DH= yaskawa.joints_Robot2DH(pos_i_Robot);
 	
 	//Ricavo posa e orientamento.
 	T_init = yaskawa.fkine(pos_i_DH);
-	
-	//Messaggio che pubblicherò sul topic joint_command
-	sensor_msgs::JointState outmsg;
-    outmsg.position.resize( yaskawa.getNumJoints() );
-    outmsg.velocity.resize( yaskawa.getNumJoints() );
-    outmsg.effort.resize( yaskawa.getNumJoints() );
     
-    outmsg.name.push_back("joint_s");
-	outmsg.name.push_back("joint_l");
-	outmsg.name.push_back("joint_e");
-	outmsg.name.push_back("joint_u");
-	outmsg.name.push_back("joint_r");
-	outmsg.name.push_back("joint_b");
-	outmsg.name.push_back("joint_t");
-    
-    
-    
-    //Inizializzazione variabili
-    Vector<> qDH_k = pos_i_DH;
-    Vector<> qpDH = Zeros(yaskawa.getNumJoints());
-    UnitQuaternion oldQ(T_init);
-    Vector<6> error = Ones; 
+   //Inizializzazione variabili
+   Vector<> qDH_k = pos_i_DH;
+   Vector<> qpDH = Zeros(yaskawa.getNumJoints());
+   UnitQuaternion oldQ(T_init);
+   Vector<6> error = Ones; 
     
 	pos=transl(T_init);
 	quat=oldQ;
@@ -133,7 +116,7 @@ int main(int argc, char*argv[]){
 
     while(ros::ok()){
 				
-		ros::spinOnce();
+
 		
 		        qDH_k = yaskawa.clik(   
                                 qDH_k, //<- qDH attuale
@@ -179,15 +162,20 @@ int main(int argc, char*argv[]){
             exit(-1); //esco
         }
 
-        for( int i = 0; i<yaskawa.getNumJoints(); i++ ){
-            outmsg.position[i] = qR[i] ;
-            outmsg.velocity[i] = qpR[i];
-            outmsg.effort[i]=0.0;
-        }
-        pub_joints.publish(outmsg);
 
-        loop_rate.sleep();
+    std_msgs::Float64MultiArray joints_states_msg;
+    joints_states_msg.data.resize(yaskawa.getNumJoints()*2);
+    
+    for (int i=0;i<yaskawa.getNumJoints();i++)
+    {
+	   joints_states_msg.data[i]=qR[i];
+		joints_states_msg.data[i+yaskawa.getNumJoints()]=qpR[i];
+    }
 
+    joint_states_pub.publish(joints_states_msg);
+     
+    ros::spinOnce();
+    loop_rate.sleep();
     }
     return 0;
 }
