@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   robotics_toolbox_ros
   geometry_msgs
   sun_systems_lib
+  visp_common
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +112,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES visp_yaskawa
-#  CATKIN_DEPENDS rocpp rospy std_msgs
+#  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -139,13 +140,14 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/visp_yaskawa_node.cpp)
-add_executable(traiettoria_yaskawa src/traiettoria_yaskawa.cpp)
-add_executable(ibvs_keypoint_ransac_depth src/ibvs_keypoint_ransac_depth.cpp)
+add_executable(clik_ibvs src/clik_ibvs.cpp)
+add_executable(ibvs src/ibvs.cpp)
+add_executable(clik src/clik.cpp)
 add_executable(yaskawa_move_to src/yaskawa_move_to.cpp)
 add_executable(force_abilitation src/force_abilitation.cpp)
 add_executable(force_position_controller src/force_position_controller.cpp)
-add_executable(clik_yaskawa src/clik_yaskawa.cpp)
+add_executable(pre_visual_servoing src/pre_visual_servoing.cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -154,35 +156,37 @@ add_executable(clik_yaskawa src/clik_yaskawa.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
- add_dependencies(ibvs_keypoint_ransac_depth ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
- add_dependencies(traiettoria_yaskawa ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+ add_dependencies(clik_ibvs ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+ add_dependencies(ibvs ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+ add_dependencies(clik ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
  add_dependencies(yaskawa_move_to ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
  add_dependencies(force_abilitation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
  add_dependencies(force_position_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
- add_dependencies(clik_yaskawa ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
-target_link_libraries(ibvs_keypoint_ransac_depth
+ add_dependencies(pre_visual_servoing ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  ## Specify libraries to link a library or executable target against
+target_link_libraries(clik_ibvs
    ${catkin_LIBRARIES}
  )
-target_link_libraries(traiettoria_yaskawa
+ target_link_libraries(ibvs
    ${catkin_LIBRARIES}
  )
-target_link_libraries(yaskawa_move_to
+ target_link_libraries(clik
    ${catkin_LIBRARIES}
  )
-target_link_libraries(force_abilitation
+ target_link_libraries(yaskawa_move_to
    ${catkin_LIBRARIES}
  )
-target_link_libraries(force_position_controller
+ target_link_libraries(force_abilitation
    ${catkin_LIBRARIES}
  )
-target_link_libraries(clik_yaskawa
+ target_link_libraries(force_position_controller
    ${catkin_LIBRARIES}
  )
+ target_link_libraries(pre_visual_servoing
+   ${catkin_LIBRARIES}
+ )
+
+ 
 #############
 ## Install ##
 #############

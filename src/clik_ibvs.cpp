@@ -19,9 +19,11 @@
 #include <trajectory_msgs/JointTrajectory.h>
 #include <geometry_msgs/Twist.h>
 
-#define NUM_JOINTS 7
-#define DIM_R 3
-#define DIM_T 4
+#define ngiun 7
+#define ndim 3
+#define dim_T 4
+#define err 6
+#define quat 4
 #define _USE_MATH_DEFINES
 
 using namespace std;
@@ -29,17 +31,18 @@ using namespace TooN;
 
 sensor_msgs::JointState current_joint_position;
 int prova=1;
-Vector<NUM_JOINTS> q0;
+Vector<ngiun> q0;
 //makeVector(-1.5475890636444092, 0.32370030879974365, -0.02413361705839634, 0.29617977142333984, -0.0076243397779762745, -1.5202265977859497, 1.570042371749878);
 //rostopic pub joint_states sensor_msgs/JointState '{position: [-1.3859895467758179, 0.5565312504768372, -0.05192752555012703, 0.6827732920646667, 0.0031894647981971502, -1.625778317451477, 1.1097440719604492]}'
 Vector<3> pf; //posizione finale desiderata
-Matrix<DIM_T,DIM_T> T_curr;
+Matrix<dim_T,dim_T> T_curr;
 Vector<3> b_twist_f_linear;
 Vector<3> b_twist_f_angular;
 Vector<6> veld;
-Vector <NUM_JOINTS> qDH_k;
+Vector <ngiun> qDH_k;
+bool stop_traj = false;
 
-Matrix<DIM_T,DIM_T> n_T_c=Data( -1, 0, -0.045, 0,
+Matrix<dim_T,dim_T> n_T_c=Data( -1, 0, -0.045, 0,
         									0.0012, -0.9659, -0.2588, 0.0633,
         									-0.0044, -0.2588, 0.9659, 0.0969,
             									0,       0,      0,      1);
@@ -50,8 +53,8 @@ bool Twist_arrived=false;
  
 void readJointPos(const sensor_msgs::JointState jointStateMsg)
 {
-    if (jointStateMsg.position.size() == NUM_JOINTS){
-		for(int i = 0; i < NUM_JOINTS; i++) {
+    if (jointStateMsg.position.size() == ngiun){
+		for(int i = 0; i < ngiun; i++) {
 				q0[i] = jointStateMsg.position[i];
 		}	
 		q0=yaskawa.joints_Robot2DH(q0);
@@ -63,9 +66,10 @@ void readJointPos(const sensor_msgs::JointState jointStateMsg)
 
 void readTwist(const geometry_msgs::Twist msg)
 {
-   Matrix <DIM_R,DIM_R> R_curr=(T_curr.slice<0,0,3,3>()).T();
+   Matrix <ndim,ndim> R_curr=(T_curr.slice<0,0,3,3>()).T();
    Vector<3> c_twist_f_linear;
    Vector<3> c_twist_f_angular;
+   
    
    c_twist_f_linear[0] = msg.linear.x;
    c_twist_f_linear[1] = msg.linear.y;
@@ -73,6 +77,11 @@ void readTwist(const geometry_msgs::Twist msg)
    c_twist_f_angular[0] = msg.angular.x;
    c_twist_f_angular[1] = msg.angular.y;
    c_twist_f_angular[2] = msg.angular.z;
+   
+   if(c_twist_f_linear[0] == 0.0 && c_twist_f_linear[1] == 0.0 && c_twist_f_linear[2] == 0.0 && c_twist_f_angular[0] == 0.0 && c_twist_f_angular[1] == 0.0 && c_twist_f_angular[2] == 0.0 )
+   {
+   	stop_traj = true;
+   }
       		
    b_twist_f_linear=R_curr*c_twist_f_linear;
    b_twist_f_angular=R_curr*c_twist_f_angular;
@@ -95,7 +104,7 @@ void readTwist(const geometry_msgs::Twist msg)
 int main(int argc, char **argv)
 {
 
-  double T_s=0.002;    
+  double T_s=0.02;    
   ros::init(argc, argv, "traiettoria_node");
   ros::NodeHandle n;
   ros::Rate loop_rate(1/T_s);
@@ -107,11 +116,13 @@ int main(int argc, char **argv)
   double secondary_gain=1; 
   double gain=2;
 
-  Vector<NUM_JOINTS> qrobot_k,qprobot;
+  Vector<ngiun> qrobot_k,qprobot;
   Vector<> qpDH = makeVector(0,0,0,0,0,0,0);
-  Vector<NUM_JOINTS> pesi = makeVector(1,1,1,4,1,1,1);
+  Vector<ngiun> pesi = makeVector(1,1,1,4,1,1,1);
 
-  Matrix<6, NUM_JOINTS> J;
+  Vector<ndim> p,pi;// posizione desiderata
+  Vector<ndim> pp; //velocità desiderata
+  Matrix<6, ngiun> J;
  
     while(Twist_arrived==false){
     ros::spinOnce();
@@ -119,15 +130,15 @@ int main(int argc, char **argv)
   joint_states_sub.shutdown();
   qDH_k=q0;
   cout<<"qDH_k:"<<qDH_k<<endl;
-  Matrix<4,4> T_clik;
+      Matrix<4,4> T_clik;
    
      
-while (ros::ok() ){
+while (ros::ok() && stop_traj == false){
   
-   J=yaskawa.jacob_geometric(qDH_k,NUM_JOINTS);
+   J=yaskawa.jacob_geometric(qDH_k,ngiun);
    cout<<"veld: "<<veld<<endl;
-   T_clik=yaskawa.fkine(qDH_k);
-   cout<<"posizione: "<<T_clik[0][3]<<" "<<T_clik[1][3]<<" "<<T_clik[2][3]<<endl;
+       T_clik=yaskawa.fkine(qDH_k);
+    cout<<"posizione: "<<T_clik[0][3]<<" "<<T_clik[1][3]<<" "<<T_clik[2][3]<<endl;
    qDH_k=yaskawa.clik( 
     						qDH_k, // Giunti attuali
     						Zeros(6), //Errore in posizione
@@ -151,7 +162,7 @@ while (ros::ok() ){
    vector<bool> check_joint_lim=yaskawa.checkHardJointLimits(qrobot_k);
    vector<bool>  check_vel_lim=yaskawa.checkHardVelocityLimits(qprobot);
 
-   for(int i=0;i<NUM_JOINTS;i++)
+   for(int i=0;i<ngiun;i++)
     {
          if(check_joint_lim[i])
         {
@@ -168,12 +179,12 @@ while (ros::ok() ){
    // std::cout<<qrobot_k<<std::endl;
 
     std_msgs::Float64MultiArray joints_states_msg;
-    joints_states_msg.data.resize(NUM_JOINTS*2);
+    joints_states_msg.data.resize(ngiun*2);
     
-    for (int i=0;i<NUM_JOINTS;i++)
+    for (int i=0;i<ngiun;i++)
     {
 	   joints_states_msg.data[i]=qrobot_k[i];
-		joints_states_msg.data[i+NUM_JOINTS]=0.0;
+		joints_states_msg.data[i+ngiun]=0.0;
     }
 
     //cout<<"msg: "<<joints_states_msg<<endl;

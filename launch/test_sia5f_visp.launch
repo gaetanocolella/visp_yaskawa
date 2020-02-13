@@ -1,0 +1,10 @@
+
+<launch>
+	<param name="robot_description" command="$(find xacro)/xacro --inorder '$(find motoman_sia5d_support)/urdf/sia5d_visp.xacro'" />
+	<param name="use_gui" value="false" />
+	<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+	    <rosparam param="/source_list">[/motoman_controller_joint_states]</rosparam>
+	</node>
+	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find industrial_robot_client)/config/robot_state_visualize.rviz" required="true" />
+</launch>

@@ -4,30 +4,45 @@
 #include <sensor_msgs/JointState.h>
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/TwistStamped.h"
+#include <std_msgs/Bool.h>
+
+
+#define dim_T 4
 
 bool joint_ok_init;
-bool ok;
 
 using namespace TooN;
 using namespace std;
 
-double tf=5.0;
 Vector<7> pos_i_Robot;
 Vector<3> pos;
 Vector<3> vel;
 UnitQuaternion quat;
 Vector<3> w;
 
+bool stop=false;
+
 Matrix<4,4> T_init;
 
-Matrix<4,4> n_T_e= Data(-1.0, 0.0, 0.0, 0.0,
+/*Matrix<4,4> n_T_e= Data(-1.0, 0.0, 0.0, 0.0,
                              0.0,-1.0, 0.0, 0.0,
                              0.0, 0.0, 1.0, 0.2369,
                              0.0, 0.0, 0.0, 1); 
                            
                                
-MotomanSIA5F yaskawa(n_T_e,2.0,"yaskawa");
+MotomanSIA5F yaskawa(n_T_e,2.0,"yaskawa");*/
 
+Matrix<dim_T,dim_T> n_T_c=Data( -1, 0, -0.045, 0,
+        									0.0012, -0.9659, -0.2588, 0.0633,
+        									-0.0044, -0.2588, 0.9659, 0.0969,
+            									0,       0,      0,      1);
+            									
+MotomanSIA5F yaskawa=MotomanSIA5F(n_T_c,2.0,"yaskawa");
+
+void Callback_abilitation(const std_msgs::Bool& en){
+      cout<<"Disabled!"<<endl;
+		stop=en.data;
+}   
 
 void sub_joint_state_cb(const sensor_msgs::JointState jointStateMsg)
 {
@@ -83,6 +98,7 @@ int main(int argc, char*argv[]){
 	ros::Subscriber sub_pose=nh.subscribe("/desired_pose",1,sub_desired_pose_cb);
 	ros::Subscriber sub_twist=nh.subscribe("/desired_twist",1,sub_desired_twist_cb);
 	ros::Publisher joint_states_pub = nh.advertise<std_msgs::Float64MultiArray>("joint_ll_control", 1);
+	ros::Subscriber sub_en=nh.subscribe("stop_clik",1,Callback_abilitation);
 	/*---------------------------------------------------------------------*/
 	
 	while(ros::ok() && !joint_ok_init){
@@ -109,12 +125,12 @@ int main(int argc, char*argv[]){
 			
 	cout << "START" << endl;
 
-    double hz = 1000.0;
+    double hz = 50.0;
     ros::Rate loop_rate(hz);
 
     double time_now = ros::Time::now().toSec();
 
-    while(ros::ok()){
+    while(ros::ok() && stop==false){
 				
 
 		
@@ -126,7 +142,7 @@ int main(int argc, char*argv[]){
                                 vel, // <- velocità in translazione desiderata
                                 w, //<- velocità angolare deisderata
                                 Ones,// <- maschera, se l'i-esimo elemento è zero allora l'i-esima componente cartesiana non verrà usata per il calcolo dell'errore
-                                0.002*hz,// <- guadagno del clik (quì è scelto in maniera conservativa)
+                                0.02*hz,// <- guadagno del clik (quì è scelto in maniera conservativa)
                                 1.0/hz,// <- Ts, tempo di campionamento
                                 0.0, // <- quadagno obj secondario
                                 Zeros(yaskawa.getNumJoints()), // velocità di giunto dell'obj secondario (qui sono zero)              
@@ -177,5 +193,10 @@ int main(int argc, char*argv[]){
     ros::spinOnce();
     loop_rate.sleep();
     }
+    cout<<"Stop: "<<stop<<endl;
+    Matrix<4,4> Tf;
+    Tf=yaskawa.fkine(qDH_k);
+    //cout<<"Tf: "<<endl<<Tf;
+    cout<<"Posizione finale raggiunta: "<<Tf[0][3]<<" "<<Tf[1][3]<<" "<<Tf[2][3]<<endl;
     return 0;
 }

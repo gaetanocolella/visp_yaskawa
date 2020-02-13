@@ -16,7 +16,6 @@
 using namespace std;
 using namespace TooN;
 
-bool enabled=true;
 Vector<3> forza=makeVector(0,0,0);  //force value
 Matrix<3,1> F_sensore=Zeros(3);
 Matrix<3,1> g_0 = Data(0.0,0.0,tool_weight*9.81);//m*g
@@ -48,7 +47,7 @@ void readJointPos(const sensor_msgs::JointState jointStateMsg)
    Teb=yaskawa.fkine(q_tDH);
    
    Rt = Teb.slice<0, 0, 3, 3>(); 
-   R_s_0=Rt*rotz(-M_PI/2.0);   //DA VERIFICARE
+   R_s_0=Rt*rotz(-M_PI/2.0);
    R_0_s=R_s_0.T();
    
    /*cout<<"Teb: "<<endl<<Teb<<endl;
@@ -85,24 +84,18 @@ void readMeasuredWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg){
   
 }
 
-void Callback_abilitation(const std_msgs::Bool& en){
-      cout<<"Enabled!"<<endl;
-		enabled=en.data;
-}   
-    
     
 int main(int argc, char **argv){
 
 	ros::init(argc, argv, "force_abilitation_node");
    ros::NodeHandle n = ros::NodeHandle();
     
-	double hz = 1000.0;
+	double hz =50.0;
 	double T_s=1.0/hz;
    ros::Rate loop_rate(hz);
        
    /*--------------------SUBSCRIBER & PUBLISHER---------------------------*/    
    ros::Subscriber rft_sensor_sub=n.subscribe("rft_data",1,readMeasuredWrench);
-   ros::Subscriber sub_en=n.subscribe("fc_abilitation",1,Callback_abilitation);
 	ros::Subscriber sub =n.subscribe("/joint_states",1,readJointPos);
    ros::Publisher pub = n.advertise<std_msgs::Float64>("pos_correction", 1);
    /*--------------------------------------------------------------------*/
@@ -114,16 +107,6 @@ int main(int argc, char **argv){
    double d_z=0.0;
    std_msgs::Float64 msg;
     
-   bool info=false;
-	while(ros::ok() && !enabled){
-		if(!info){
-			cout<<"[Force Controller]: Waiting for abilitation signal..."<<endl;
-			info=true;
-		}
-		ros::spinOnce();
-		loop_rate.sleep();
-	}
-	
 	cout<<"[Force Controller]: Enabled."<<endl;
 
    int reached;
@@ -133,23 +116,27 @@ int main(int argc, char **argv){
    
    while(ros::ok()){
    
+   ros::spinOnce();
+   
    bool reset;
 
-		if(enabled){
              diff=fd-f_z;
 	          cout<<"f_z: "<<f_z<<" La differenza è: "<<diff<<endl;
-			if(fabs(fd-f_z)<0.1){
-				//f_z=fd;
+			if((fd-f_z)>=0.0){
 				d_z=0.0;
      			msg.data=d_z;
-				pub.publish(msg);
+     			for(int i=0; i<100; i++){
+					pub.publish(msg);
+					ros::spinOnce();
+					loop_rate.sleep();
+				}
 				break;
 			}else{
 			  d_z=tf.apply(fd-f_z);
 			  reset=true;
-			   //cout<<"[Force Controller]: Correcting."<<endl;
+			   cout<<"[Force Controller]: Correcting."<<endl;
 		}
-		}
+		
 		/*else if(!enabled){
             if(reset){
 				tf.reset();
@@ -163,10 +150,8 @@ int main(int argc, char **argv){
       
 		msg.data=d_z;
 		pub.publish(msg);
-		ros::spinOnce();
 		loop_rate.sleep();
-		
-			}
-    }
+	}
+}
 
 

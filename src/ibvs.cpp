@@ -34,7 +34,6 @@
 #include <visp3/gui/vpDisplayGDI.h>
 #include <visp3/gui/vpDisplayOpenCV.h>
 #include <visp3/gui/vpDisplayX.h>
-#include "pose_helper.h"
 #include <cv_bridge/cv_bridge.h>
 #include <visp3/core/vpImageConvert.h>
 #include <visp3/gui/vpDisplayOpenCV.h>
@@ -45,10 +44,10 @@
 
 using namespace std;
 
-int NUM_KEYPOINTS=10; 
+int NUM_KEYPOINTS=7; 
 
 ros::Publisher cmdvel;
-ros::Publisher current_pose;
+//ros::Publisher current_pose;
 ros::Subscriber depth_sub;
 std_msgs::Float64MultiArray msg;
 cv_bridge::CvImagePtr cv_ptr;
@@ -70,7 +69,7 @@ void readDepth(const sensor_msgs::ImageConstPtr& msg)
     DEPTH_WIDTH = msg->width;
    /* 
     ofstream file;
-	 file.open("/home/yaskawa/catkin_visservo/src/visp_yaskawa/des_depth_aligned.txt");
+	 file.open("/home/yaskawa/catkin_visservo/src/visp_yaskawa/objects/OBJ_NAME.txt");
 	 
     for (int i =0; i<DEPTH_WIDTH; i++){
     	for (int j =0; j<DEPTH_HEIGHT; j++){
@@ -107,7 +106,7 @@ int main(int argc, char **argv)
   //depth_sub= n.subscribe("/camera/depth/image_rect_raw", 1, readDepth);
   depth_sub= n.subscribe("/camera/aligned_depth_to_color/image_raw", 1, readDepth);
   cmdvel = n.advertise<geometry_msgs::Twist>("/visp_twist", 1);
-  current_pose = n.advertise<std_msgs::Float64MultiArray>("/current_pose", 1);
+  //current_pose = n.advertise<std_msgs::Float64MultiArray>("/current_pose", 1);
   vpImage<unsigned char> I;
   
   /*while (ros::ok()){  //decommentare per la scrittura su file della depth map desiderata
@@ -167,7 +166,7 @@ try {
 
 	 vpImage<unsigned char> Idisp;
 	 vpImage<unsigned char> I_static;
-	 vpImageIo::read(I_static, "/home/gaetanocolella/catkin_ws/src/visp_yaskawa/" + obj + ".png");   
+	 vpImageIo::read(I_static, "/home/yaskawa/catkin_visservo/src/add/visp_yaskawa/objects/" + obj + ".png");   
 
 	 //[Pref_computation]
 	 const std::string detectorName = "ORB";
@@ -190,13 +189,13 @@ try {
     task.setInteractionMatrixType(vpServo::DESIRED, vpServo::PSEUDO_INVERSE);
     task.setLambda(0.1);
     bool has_converged = false;
-    double convergence_threshold = 0.0008;
+    double convergence_threshold = 0.008;
 
     
   
 	 //Read depth data
   	 float mat[DEPTH_WIDTH][DEPTH_HEIGHT];
-	 ifstream rfile("/home/gaetanocolella/catkin_ws/src/visp_yaskawa/"+ obj + ".txt");
+	 ifstream rfile("/home/yaskawa/catkin_visservo/src/add/visp_yaskawa/objects/"+ obj + ".txt");
 	
 	 while(!rfile.eof()){
 		 for (int i =0; i<DEPTH_WIDTH; i++){
