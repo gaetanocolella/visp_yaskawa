@@ -9,18 +9,21 @@
 using namespace std;
 using namespace TooN;
 
-#define ngiun 7
 
-Vector<ngiun> q0,qf;
+Vector<7> q0,qf;
            								
 double tf=10.0;
 bool joint_ok_init;
+
+//Oggetto robot
+MotomanSIA5F yaskawa;
+	
 	
 void readJointPos(const sensor_msgs::JointState jointStateMsg)
 {
  	if(!joint_ok_init){			
 		joint_ok_init=true;
-		for(int i = 0; i < ngiun; i++) {
+		for(int i = 0; i < yaskawa.getNumJoints(); i++) {
 				q0[i] = jointStateMsg.position[i];
 		}	
     }           									
@@ -31,9 +34,7 @@ int main(int argc, char*argv[]){
 	ros::init(argc, argv, "yaskawa_move_to");
 
     ros::NodeHandle nh;
-    
-    //Oggetto robot
-	MotomanSIA5F yaskawa;
+   
 	
 	qf=makeVector(atof(argv[1]),atof(argv[2]),atof(argv[3]),atof(argv[4]),atof(argv[5]),atof(argv[6]),atof(argv[7]));
 	
@@ -51,7 +52,7 @@ int main(int argc, char*argv[]){
 	//GENERAZIONE TRAIETTORIA
 	Vector_Independent_Traj traj;	
 	
-	for(int i=0;i<ngiun;i++){
+	for(int i=0;i<yaskawa.getNumJoints();i++){
 	traj.push_back_traj(Quintic_Poly_Traj (tf, q0[i], qf[i]));
 	}
 	
@@ -63,20 +64,20 @@ int main(int argc, char*argv[]){
     traj.changeInitialTime(time_now);
     
     std_msgs::Float64MultiArray joints_states_msg;
-    joints_states_msg.data.resize(ngiun*2);
+    joints_states_msg.data.resize(yaskawa.getNumJoints()*2);
     
     
     while(ros::ok() && (!traj.isCompleate(time_now))){
     
     time_now = ros::Time::now().toSec();
     
-    Vector<ngiun> position =traj.getPosition(time_now);
-    Vector<ngiun> velocity =traj.getVelocity(time_now);
+    Vector<> position =traj.getPosition(time_now);
+    Vector<> velocity =traj.getVelocity(time_now);
     
    vector<bool> check_joint_lim=yaskawa.checkHardJointLimits(position);
    vector<bool>  check_vel_lim=yaskawa.checkHardVelocityLimits(velocity);
 
-   for(int i=0;i<ngiun;i++)
+   for(int i=0;i<yaskawa.getNumJoints();i++)
     {
          if(check_joint_lim[i])
         {
@@ -91,10 +92,10 @@ int main(int argc, char*argv[]){
     }
     
     
-    for (int i=0;i<ngiun;i++)
+    for (int i=0;i<yaskawa.getNumJoints();i++)
     {
 	joints_states_msg.data[i]=position[i];
-	joints_states_msg.data[i+ngiun]=velocity[i];
+	joints_states_msg.data[i+yaskawa.getNumJoints()]=velocity[i];
     }
    
     joint_states_pub.publish(joints_states_msg);

@@ -111,12 +111,15 @@ int main(int argc, char*argv[]){
 	
 	//Ricavo posa e orientamento.
 	T_init = yaskawa.fkine(pos_i_DH);
-    
+ 
    //Inizializzazione variabili
    Vector<> qDH_k = pos_i_DH;
    Vector<> qpDH = Zeros(yaskawa.getNumJoints());
    UnitQuaternion oldQ(T_init);
    Vector<6> error = Ones; 
+       
+   Vector<> desired_configuration = makeVector(0.0,0.0,0.0,M_PI/2.0,0.0,0.0,0.0);
+   Vector<> joint_weights = makeVector(1.0, 1.0, 1.0, 1.0, 1.0, 5.0, 1.0);
     
 	pos=transl(T_init);
 	quat=oldQ;
@@ -145,7 +148,7 @@ int main(int argc, char*argv[]){
                                 0.02*hz,// <- guadagno del clik (quì è scelto in maniera conservativa)
                                 1.0/hz,// <- Ts, tempo di campionamento
                                 0.0, // <- quadagno obj secondario
-                                Zeros(yaskawa.getNumJoints()), // velocità di giunto dell'obj secondario (qui sono zero)              
+                                yaskawa.grad_fcst_target_configuration(qDH_k, desired_configuration, joint_weights), // velocità di giunto dell'obj secondario (qui sono zero)              
                                 //Return Vars
                                 qpDH, // <- variabile di ritorno velocità di giunto
                                 error, //<- variabile di ritorno errore

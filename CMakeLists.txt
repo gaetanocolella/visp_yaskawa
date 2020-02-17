@@ -147,6 +147,7 @@ add_executable(yaskawa_move_to src/yaskawa_move_to.cpp)
 add_executable(force_abilitation src/force_abilitation.cpp)
 add_executable(force_position_controller src/force_position_controller.cpp)
 add_executable(pre_visual_servoing src/pre_visual_servoing.cpp)
+add_executable(place src/place.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -163,6 +164,7 @@ add_executable(pre_visual_servoing src/pre_visual_servoing.cpp)
  add_dependencies(force_abilitation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
  add_dependencies(force_position_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
  add_dependencies(pre_visual_servoing ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  add_dependencies(place ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
   ## Specify libraries to link a library or executable target against
 target_link_libraries(clik_ibvs
    ${catkin_LIBRARIES}
@@ -185,6 +187,10 @@ target_link_libraries(clik_ibvs
  target_link_libraries(pre_visual_servoing
    ${catkin_LIBRARIES}
  )
+ target_link_libraries(place
+   ${catkin_LIBRARIES}
+ )
+
 
  
 #############
