@@ -67,9 +67,9 @@ void readDepth(const sensor_msgs::ImageConstPtr& msg)
     
     DEPTH_HEIGHT = msg->height;
     DEPTH_WIDTH = msg->width;
-   /* 
-    ofstream file;
-	 file.open("/home/yaskawa/catkin_visservo/src/visp_yaskawa/objects/OBJ_NAME.txt");
+    
+    /*ofstream file;
+	 file.open("/home/yaskawa/catkin_visservo/src/add/visp_yaskawa/objects/balea_new.txt");
 	 
     for (int i =0; i<DEPTH_WIDTH; i++){
     	for (int j =0; j<DEPTH_HEIGHT; j++){
