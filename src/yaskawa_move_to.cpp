@@ -12,7 +12,7 @@ using namespace TooN;
 
 Vector<7> q0,qf;
            								
-double tf=10.0;
+double tf=25.0;
 bool joint_ok_init;
 
 //Oggetto robot
@@ -42,7 +42,7 @@ int main(int argc, char*argv[]){
     
     
 	ros::Subscriber joint_states_sub = nh.subscribe("/joint_states", 1, readJointPos);
-	ros::Publisher joint_states_pub = nh.advertise<std_msgs::Float64MultiArray>("/test_q", 1);
+	ros::Publisher joint_states_pub = nh.advertise<std_msgs::Float64MultiArray>("/joint_ll_control", 1);
 	
 	while(ros::ok() && !joint_ok_init){
 		ros::spinOnce();

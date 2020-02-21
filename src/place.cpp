@@ -73,19 +73,34 @@ int main(int argc, char **argv){
    
     Vector<3> pi=transl(T_init);
     
-   
+    
+   Matrix<3,3> Rf = Data(-0.086954, 0.252469, -0.967364, 
+                                0.9826, 0.181139, -0.00146728, 
+                                0.164187, -0.950467, -0.257236);
+    
+    Matrix<3,3> Rf_inter = Data(-0.851953, 0.454978, -0.293704, 
+											0.477294, 0.878295, -0.00773122, 
+											0.215377, -0.146745, -0.9568936);                            
                              
-    Matrix<3,3> Rf= Data(-0.00754697, 0.273757, -0.962231,   //desired Rotation Matrix 
-								  0.997673, -0.0632722, 0.0145066, 
-								 -0.0679084, -0.959684, -0.27544);
-                      
-                          
+    Matrix<3,3> Rf_final= Data( 0.999899, 0.00655554, 0.053824,   //desired Rotation Matrix 
+								 -0.0112276, -0.259002, 0.965514, 
+								  0.00981878, -0.965824, -0.258554);
+								                           
     UnitQuaternion Qi(T_init);
     Vector<3> Qi_v=Qi.getV();
     double Qi_s=Qi.getS();
+    
     UnitQuaternion Qf(Rf);
     Vector<3> Qf_v=Qf.getV();
     double Qf_s=Qf.getS();
+    
+    UnitQuaternion Qf_inter(Rf_inter);
+    Vector<3> Qf_inter_v=Qf_inter.getV();
+    double Qf_inter_s=Qf_inter.getS();
+    
+    UnitQuaternion Qf_final(Rf_final);
+    Vector<3> Qf_final_v=Qf_final.getV();
+    double Qf_final_s=Qf_final.getS();
     
     //cout<<"Quaternione iniziale: "<<endl<<Qi<<endl;
     //cout<<"Quaternione finale: "<<endl<<Qf<<endl;
@@ -95,44 +110,80 @@ int main(int argc, char **argv){
                             tf,//duration
                             0.0,//double initial_position,
                             1.0);//double final_position,
+    Quintic_Poly_Traj s_pos1(   
+                            tf,//duration
+                            0.0,//double initial_position,
+                            1.0);//double final_position,
+    Quintic_Poly_Traj s_pos2(   
+                            tf,//duration
+                            0.0,//double initial_position,
+                            1.0);//double final_position,
+    Quintic_Poly_Traj s_pos_final(   
+                            		10.0,//duration
+                            		0.0,//double initial_position,
+                            		1.0);//double final_position,
     
     Vector<3> pf_absolute;
     Vector<3> pf1, pf2;
     
-    pf1=pi+makeVector(-0.10,0.0,0.30);
+    pf1=pi+makeVector(-0.10, 0.0, 0.15);
     
     Line_Segment_Traj lin_traj1( 
 		                          pi,//pi
 		                          pf1,//pf
 		                          s_pos);
+		                          
+    pf2 = makeVector(-0.408989,-0.00601007,0.801611);
         
-    pf_absolute= makeVector(-0.40, -0.54, 0.40);
+    //pf_absolute= makeVector(-0.00958789,0.45,0.561147);
+    pf_absolute= makeVector(-0.10958789,0.45,0.550147);
     
     Line_Segment_Traj lin_traj2( 
 		                          pf1,//pi
-		                          pf_absolute,//pf
+		                          pf2,//pf
 		                          s_pos);                         
-                             
+    
+    Line_Segment_Traj lin_traj3( 
+		                          pf2,//pi
+		                          pf_absolute,//pf
+		                          s_pos); 
+	
+	Line_Segment_Traj lin_traj_final( 
+		                          pf_absolute,//pi
+		                          pf_absolute+makeVector(0.0, 0.15, 0.0),//pf
+		                          s_pos_final); 	                          
 
     double time_now = ros::Time::now().toSec();
     lin_traj1.changeInitialTime(time_now);
 	 lin_traj2.changeInitialTime(time_now+tf);
+	 lin_traj3.changeInitialTime(time_now+(2*tf));
+	 lin_traj_final.changeInitialTime(time_now+(3*tf));
 	 s_pos.changeInitialTime(time_now);
+	 s_pos1.changeInitialTime(time_now+tf);
+    s_pos2.changeInitialTime(time_now+(2*tf));
 
-
-	 while(ros::ok() && ((!lin_traj1.isCompleate(time_now)) || (!lin_traj2.isCompleate(time_now))))
+	 while(ros::ok() && ((!lin_traj1.isCompleate(time_now)) || (!lin_traj2.isCompleate(time_now)) || (!lin_traj3.isCompleate(time_now)) || (!lin_traj_final.isCompleate(time_now))))
 	 {
 	    
 		 time_now = ros::Time::now().toSec();
        Vector<3> final_position;
-		 UnitQuaternion Q_now=Qi.interp(Qf,s_pos.getPosition(time_now),false);
+		 UnitQuaternion Q_now;
        
        if((!lin_traj1.isCompleate(time_now))){
 		 final_position=lin_traj1.getPosition(time_now);
-		 }
+       Q_now=Qi.interp(Qf_inter,s_pos.getPosition(time_now),true);}
        
        if(lin_traj1.isCompleate(time_now) && (!lin_traj2.isCompleate(time_now))){
-		 final_position=lin_traj2.getPosition(time_now);}
+		 final_position=lin_traj2.getPosition(time_now);
+		 Q_now=Qf_inter.interp(Qf,s_pos1.getPosition(time_now),true);}
+		 
+		 if(lin_traj2.isCompleate(time_now) && (!lin_traj3.isCompleate(time_now))){
+		 final_position=lin_traj3.getPosition(time_now);
+		 Q_now=Qf.interp(Qf_final,s_pos2.getPosition(time_now),true);}
+		 
+		 if(lin_traj3.isCompleate(time_now) && (!lin_traj_final.isCompleate(time_now))){
+		 final_position=lin_traj_final.getPosition(time_now);
+		 Q_now=Qf_final;}
 		 
 
 		 geometry_msgs::PoseStamped posemsg;

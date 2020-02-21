@@ -128,7 +128,8 @@ using namespace TooN;
 	 lin_traj.changeInitialTime(time_now);
 	
  */
-      double time_now = ros::Time::now().toSec();
+      
+    double time_now = ros::Time::now().toSec();
 
     s_pos.changeInitialTime(time_now);
 	 vel=Zeros(yaskawa.getNumJoints());
@@ -140,14 +141,14 @@ using namespace TooN;
 		
 				 /*pos =lin_traj.getPosition(time_now);*/
 				 time_now = ros::Time::now().toSec();
-				 UnitQuaternion quat=Qi.interp(Qf,s_pos.getPosition(time_now),false);
+				 //UnitQuaternion quat=Qi.interp(Qf,s_pos.getPosition(time_now),true);
 				 cout<<"pi: "<<pi<<endl;
              Vector<3> pf=pos+delta_z;
              
-		        qDH_k = yaskawa.clik(   
+		       qDH_k = yaskawa.clik(   
                                 qDH_k, //<- qDH attuale
                                 pf, // <- posizione desiderata
-                                quat, // <- quaternione desiderato
+                                Qi, // <- quaternione desiderato
                                 oldQ,// <- quaternione al passo precedente (per garantire la continuità)
                                 vel, // <- velocità in translazione desiderata
                                 w, //<- velocità angolare deisderata

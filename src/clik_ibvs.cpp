@@ -89,14 +89,16 @@ void readTwist(const geometry_msgs::Twist msg)
    for(int i = 0; i < 3; i++) {
    veld[i] = b_twist_f_linear[i];
    cout<<"c_twist_f_linear: "<<c_twist_f_linear[i]<<endl;
-   cout<<"b_twist_f_linear: "<<b_twist_f_linear[i]<<endl;}
-   for(int i = 3; i < 6; i++) {
-   veld[i] = b_twist_f_angular[i-3];
+   cout<<"b_twist_f_linear: "<<b_twist_f_linear[i]<<endl;
+   }
+   for(int i = 3; i < 4; i++) {
+   veld[i] = 0.0;
    cout<<"----------------------------------------------------------------"<<endl;
    cout<<"c_twist_f_angular: "<<c_twist_f_angular[i-3]<<endl;
    cout<<"b_twist_f_angular: "<<b_twist_f_angular[i-3]<<endl;
    }
-
+   veld[5] = b_twist_f_angular[2];
+   
  Twist_arrived= true;
 
 }

@@ -119,7 +119,7 @@ int main(int argc, char*argv[]){
    Vector<6> error = Ones; 
        
    Vector<> desired_configuration = makeVector(0.0,0.0,0.0,M_PI/2.0,0.0,0.0,0.0);
-   Vector<> joint_weights = makeVector(1.0, 1.0, 1.0, 1.0, 1.0, 5.0, 1.0);
+   Vector<> joint_weights = makeVector(5.0, 5.0, 1.0, 1.0, 1.0, 10.0, 1.0);
     
 	pos=transl(T_init);
 	quat=oldQ;

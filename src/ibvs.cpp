@@ -44,7 +44,7 @@
 
 using namespace std;
 
-int NUM_KEYPOINTS=7; 
+int NUM_KEYPOINTS=5; 
 
 ros::Publisher cmdvel;
 //ros::Publisher current_pose;
@@ -212,7 +212,7 @@ try {
 	std::cout << "Matches=" << nbMatch << std::endl;
 	
 	//Features initialization
-    vpFeaturePoint p_cur[NUM_KEYPOINTS], pd[NUM_KEYPOINTS];
+    vpFeaturePoint p_cur[NUM_KEYPOINTS], pd[NUM_KEYPOINTS],p_temp;
     vpFeatureDepth z_cur[NUM_KEYPOINTS], zd[NUM_KEYPOINTS];
     
     for (unsigned int i = 0; i < NUM_KEYPOINTS; i++) {
@@ -240,7 +240,7 @@ try {
 	
 	for (unsigned int i = 0; i < NUM_KEYPOINTS; i++){
 		keypoint.getMatchedPoints(i, iPref[i], iPcur[i]);
-		feature.push_back(cv::Point2f((float)iPcur[i].get_u(), (float)iPcur[i].get_v()));
+		//feature.push_back(cv::Point2f((float)iPcur[i].get_u(), (float)iPcur[i].get_v()));
 		vpFeatureBuilder::create(pd[i], cam, iPref[i]);	
 		pd[i].set_Z(mat[(int)iPref[i].get_j()][(int)iPref[i].get_i()]);
 		if((mat[(int)iPref[i].get_j()][(int)iPref[i].get_i()]) != 0.0){
@@ -261,6 +261,36 @@ try {
 	cout<<"Media: "<<i_mean<<" "<<j_mean<<endl;
 	
 	vpImagePoint mean(i_mean, j_mean);
+	
+	vpImagePoint iPref_temp, iPcur_temp;
+
+	int count=0;
+	
+	for (unsigned int i = 0; i < nbMatch; i++){
+
+		keypoint.getMatchedPoints(i, iPref_temp, iPcur_temp);		
+		vpFeatureBuilder::create(p_temp, cam, iPcur_temp);		
+		p_temp.set_Z((double)cv_ptr->image.at<short int>(cv::Point((int)iPcur_temp.get_j(), (int)iPcur_temp.get_i()))/1000);	
+		
+		if(p_temp.get_x()<0.10 && p_temp.get_y()<0.10 && p_temp.get_Z()<0.60){
+		iPref[count] = iPref_temp;
+		iPcur[count] = iPcur_temp;
+		cout<<"p_temp.get_Z(): "<<i<<" "<<p_temp.get_Z()<<endl;
+		feature.push_back(cv::Point2f((float)iPcur[i].get_u(), (float)iPcur[i].get_v()));
+      vpFeatureBuilder::create(pd[count], cam, iPref[i]);	
+		pd[count].set_Z(mat[(int)iPref[i].get_j()][(int)iPref[i].get_i()]);
+		if((mat[(int)iPref[i].get_j()][(int)iPref[i].get_i()]) != 0.0){
+				zd[count].buildFrom(pd[count].get_x(), pd[count].get_y(), (mat[(int)iPref[i].get_j()][(int)iPref[i].get_i()]), 0);
+		}
+		else{
+			   zd[count].buildFrom(pd[count].get_x(), pd[count].get_y(), 1.0, 0);
+			 }
+		count++;
+		}
+		if(count == NUM_KEYPOINTS)break;
+	}
+	
+	
 	 
 	tracker.initTracking(cvI, feature);
 	std::vector<cv::Point2f> feature_cur;
@@ -272,18 +302,23 @@ try {
 		   vpDisplay::display(Idisp);
 		   vpImageConvert::convert(I, cvI);
 		   		   		   
+		   		   		   
+		   		   		   
 		   for (unsigned int i = 0; i < NUM_KEYPOINTS; i++) {
 		   		vpDisplay::displayCross(Idisp, iPref[i]+vpImagePoint(0, I.getWidth()), 12, vpColor::green);
                //vpDisplay::displayCross(Idisp, iPcur[i], 12, vpColor::blue);
          }
-		   tracker.track(cvI);
+         tracker.track(cvI);
 		   feature_cur = tracker.getFeatures();
+	   
 		   //cout << "tracked_feat: "<< feature_cur.size() << endl;    
       	id_feat = tracker.getFeaturesId();
       	
       	/*for(unsigned int i = 0; i < id_feat.size(); i++)
       			   cout << id_feat[i] << " ";    
       	cout << endl;*/
+      	
+   
  	
 		   for (unsigned int i = 0; i < NUM_KEYPOINTS; i++) {
 				p_cur[i].set_x(0.0);
@@ -339,6 +374,8 @@ try {
 		   }	*/	   
 		   
 		  	tracker.display(Idisp, vpColor::red);
+		  	
+		  	
 		  	vpDisplay::displayCross(Idisp, mean, 50, vpColor::white);
 		  	
 		   //Compute control low 	

@@ -15,6 +15,9 @@
 #include <fstream>
 #include <iostream>
 #include <cv_bridge/cv_bridge.h>
+#include <AngVec.h>
+#include "Traj_Generators/Cartesian_Independent_Traj.h"
+#include "Traj_Generators/Rotation_Const_Axis_Traj.h"
 
 using namespace std;
 using namespace TooN;
@@ -161,6 +164,12 @@ int main(int argc, char **argv){
 
     Vector<> q_DH= yaskawa.joints_Robot2DH(q0);
     Matrix<4,4> T_init = yaskawa.fkine(q_DH);
+    
+    /*cout<<"T_init: "<<endl<<T_init<<endl;  //decommentare per prendere la posa di place
+    
+    while(ros::ok()){
+		ros::spinOnce();
+    }*/
 
     Vector<3> pi=transl(T_init);
     
@@ -171,7 +180,7 @@ int main(int argc, char **argv){
     Vector<> pf_tilde=makeVector(x_obj,y_obj,0.0,1.0);
     Vector<> pf_b_tilde=T_init*pf_tilde;
     Vector<> pf_b=pf_b_tilde.slice(0,3);
-    pf_b[2] = 0.40;
+    pf_b[2] = 0.35;
     //cout<<"pf_b: "<<pf_b[0]<<" "<<pf_b[1]<<" "<<pf_b[2]<<endl;
     
     Matrix<3,3> Rf= Data(-0.998975,-0.0450632,-0.0342326,
@@ -185,31 +194,53 @@ int main(int argc, char **argv){
     Vector<3> Qf_v=Qf.getV();
     double Qf_s=Qf.getS();
     
-    cout<<"Quaternione iniziale: "<<endl<<Qi<<endl;
-    cout<<"Quaternione finale: "<<endl<<Qf<<endl;
-
+    AngVec asse_angolo;
+  
+    UnitQuaternion Q_f_i = inv(Qi) * Qf;
+    
+    asse_angolo = Q_f_i.toangvec();
+    
+    Vector<3> axis = asse_angolo.getAx();
+    double theta = asse_angolo.getTheta();
+      
+    
     Quintic_Poly_Traj s_pos(   
                             tf,//duration
                             0.0,//double initial_position,
                             1.0);//double final_position,
+    Quintic_Poly_Traj s_rot(   
+                            tf,//duration
+                            0.0,//double initial_position,
+                            theta);//double final_position,
+    
+    Rotation_Const_Axis_Traj rot_traj (
+    												UnitQuaternion(),
+    												axis,
+    												s_rot);
+    												
+    rot_traj.changeFrame(Qi);												
        
     Line_Segment_Traj lin_traj( 
                              pi,//pi
                              pf_b,//pf
                              s_pos);
-                             
+                           
+    Cartesian_Independent_Traj cart_traj (lin_traj, rot_traj);                      
+                          
     double time_now = ros::Time::now().toSec();
-	 lin_traj.changeInitialTime(time_now);
-	 s_pos.changeInitialTime(time_now);
+	 //lin_traj.changeInitialTime(time_now);
+	 cart_traj.changeInitialTime(time_now);
+	 //s_pos.changeInitialTime(time_now);
 
 
-	 while(ros::ok() && ((!lin_traj.isCompleate(time_now))))// || (!rot_traj.isCompleate(time_now))))
+	 while(ros::ok() && ((!cart_traj.isCompleate(time_now))))// || (!rot_traj.isCompleate(time_now))))
 	 {
 	    
 		 time_now = ros::Time::now().toSec();
 
-		 Vector<> final_position =lin_traj.getPosition(time_now);   		
-     	 UnitQuaternion Q_now=Qi.interp(Qf,s_pos.getPosition(time_now),false);
+		 Vector<> final_position =cart_traj.getPosition(time_now); 
+		 UnitQuaternion Q_now=cart_traj.getQuaternion(time_now);		
+     	 //UnitQuaternion Q_now=Qi.interp(Qf,s_pos.getPosition(time_now),false);
      		
 		 geometry_msgs::PoseStamped posemsg;
 		 geometry_msgs::TwistStamped twistmsg;
