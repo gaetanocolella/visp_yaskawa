@@ -47,11 +47,11 @@ using namespace std;
 int NUM_KEYPOINTS=5; 
 
 ros::Publisher cmdvel;
-//ros::Publisher current_pose;
 ros::Subscriber depth_sub;
 std_msgs::Float64MultiArray msg;
 cv_bridge::CvImagePtr cv_ptr;
 int DEPTH_HEIGHT, DEPTH_WIDTH;
+
 
 void readDepth(const sensor_msgs::ImageConstPtr& msg)
 {
@@ -179,7 +179,7 @@ try {
 	 Idisp.resize(I.getHeight(), 2 * I.getWidth());
 	 Idisp.insert(I_static, vpImagePoint(0, I.getWidth()));
 	 Idisp.insert(I, vpImagePoint(0, 0));
-	 vpDisplayOpenCV d(Idisp, 0, 0, "Homography from matched keypoints");
+	 vpDisplayOpenCV d(Idisp, 0, 0, "Visual servoing");
 	 vpDisplay::display(Idisp);
 	 vpDisplay::flush(Idisp);
 
